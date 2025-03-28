@@ -1,0 +1,101 @@
+
+base_model: Qwen/Qwen2.5-0.5B-Instruct
+model_type: AutoModelForCausalLM
+tokenizer_type: AutoTokenizer
+
+# Model configuration
+model_config:
+  num_labels: 3  # Three-way classification
+  trust_remote_code: true  # Required for Qwen model
+
+load_in_8bit: false
+load_in_4bit: false  # Not using quantization for Qwen model
+strict: false
+trust_remote_code: true  # Required for Qwen model
+
+# Training hyperparameters optimized for Qwen2.5
+sequence_len: 4096  # Qwen supports up to 32k but using 4k for efficiency
+max_steps: 1000
+eval_steps: 50
+save_steps: 100
+warmup_steps: 100
+lora_dropout: 0.1
+lr_scheduler: cosine
+learning_rate: 5e-5
+weight_decay: 0.01
+optimizer: adamw_torch
+gradient_checkpointing: true
+flash_attention: true
+
+datasets:
+  - path: /data/train.jsonl
+    type: json
+    field_human: prompt
+    field_assistant: response_a_text
+    field_target: target
+    field_response_b: response_b_text
+
+dataset_prepared_path: null
+val_set_size: 0.05
+output_dir: /models
+
+adapter: lora
+lora_model_dir:
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+sequence_len: 2048
+sample_packing: true
+pad_to_sequence_len: true
+
+# Training configuration for three-way classification
+training:
+  loss_fn: CrossEntropyLoss
+  label_smoothing: 0.1
+  class_weights: [1.0, 1.0, 1.0]  # Can be adjusted based on class distribution
+
+wandb_project: llm-preference-prediction
+wandb_run_name: qwen2.5-0.5b-preference-ft
+wandb_watch: false
+wandb_log_model: false
+
+gradient_accumulation_steps: 2  # Reduced since H100 can handle larger batches
+micro_batch_size: 16  # Increased for H100 GPU with 80GB VRAM
+num_epochs: 3
+optimizer: adamw_torch
+lr_scheduler: cosine
+learning_rate: 5.0e-5
+train_on_inputs: false
+group_by_length: false
+bf16: true
+fp16: false
+tf32: false
+
+gradient_checkpointing: true
+early_stopping_patience: 3
+resume_from_checkpoint: false
+local_rank: 0
+logging_steps: 10
+xformers_attention: false
+flash_attention: true
+
+warmup_steps: 100
+evals_per_epoch: 4
+saves_per_epoch: 1
+debug: false
+deepspeed: null
+weight_decay: 0.01
+fsdp: null
+special_tokens:
+  bos_token: "<s>"
+  eos_token: "</s>"
+  unk_token: "<unk>"
